@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>QR Code Scanner</title>
+  <script src="https://cdn.jsdelivr.net/npm/quagga" defer></script>
+  <style>
+    #status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      font-size: 18px;
+      margin: 20px auto;
+      background-color: gray;
+      color: white;
+    }
+    .green {
+      background-color: green;
+      color: white;
+    }
+    .red {
+      background-color: red;
+      color: white;
+    }
+    .blue {
+      background-color: blue;
+      color: white;
+      position: relative;
+    }
+    .blue:before {
+      content: 'Scanning...';
+      background: gray;
+      color: white;
+      border: 2px solid black;
+      padding: 4px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <h1>QR Code Scanner</h1>
+  
+  <video id="videoElement" autoplay></video>
+  <canvas id="canvasElement" style="display:none;"></canvas>
+  <button id="scanButton">Scan QR Code</button>
+  <div id="status"></div>
+  
+  <script>
+    const videoElement = document.getElementById('videoElement');
+    const canvasElement = document.getElementById('canvasElement');
+    const scanButton = document.getElementById('scanButton');
+    const statusDiv = document.getElementById('status');
+    
+    let mediaStream;
+    
+    async function startCamera() {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        videoElement.srcObject = mediaStream;
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+      }
+    }
+    
+    startCamera();
+    
+    function displayStatus(message, colorClass) {
+      statusDiv.textContent = message;
+      statusDiv.className = colorClass;
+    }
+    
+    scanButton.addEventListener('click', function() {
+      displayStatus('', 'blue');
+      
+      Quagga.init({
+        inputStream: {
+          name: 'Live',
+          type: 'LiveStream',
+          target: videoElement,
+        },
+        decoder: {
+          readers: ['qrcode'],
+        },
+      }, function(err) {
+        if (err) {
+          console.error('Error initializing Quagga:', err);
+          displayStatus('Error', 'red');
+          return;
+        }
+        Quagga.start();
+      });
+      
+      Quagga.onDetected(function(result) {
+        if (result && result.codeResult && result.codeResult.code) {
+          const url = result.codeResult.code;
+          displayStatus('Redirecting...', 'green');
+          setTimeout(() => {
+            window.open(url, '_blank');
+            displayStatus('', '');
+          }, 3000);
+        } else {
+          displayStatus('No QR code detected', 'red');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
